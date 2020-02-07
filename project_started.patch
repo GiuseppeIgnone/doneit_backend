@@ -1,0 +1,241 @@
+Index: doneit/src/main/java/com/sini/doneit/model/User.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/java/com/sini/doneit/model/User.java	(revision b0cd47317d2061242358ffd094ed3abffc381301)
++++ doneit/src/main/java/com/sini/doneit/model/User.java	(date 1578004164349)
+@@ -1,7 +1,18 @@
+ package com.sini.doneit.model;
+ 
++
++import javax.persistence.*;
++import javax.validation.constraints.Max;
++import javax.validation.constraints.Min;
++
++@Entity
++@Table(name = "users")
+ public class User {
+ 
++    @Id
++    @GeneratedValue(strategy = GenerationType.AUTO)
++    private Long id;
++    @Column(unique = true)
+     private String username;
+     private String password;
+ 
+@@ -31,4 +42,12 @@
+                 ", password='" + password + '\'' +
+                 '}';
+     }
++
++    public Long getId() {
++        return id;
++    }
++
++    public void setId(Long id) {
++        this.id = id;
++    }
+ }
+Index: doneit/src/main/java/com/sini/doneit/controller/RegisterController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/java/com/sini/doneit/controller/RegisterController.java	(date 1578007196277)
++++ doneit/src/main/java/com/sini/doneit/controller/RegisterController.java	(date 1578007196277)
+@@ -0,0 +1,38 @@
++package com.sini.doneit.controller;
++
++import com.sini.doneit.model.ResponseMessage;
++import com.sini.doneit.model.User;
++import com.sini.doneit.repository.UserJpaRepository;
++import com.sini.doneit.services.LoginValidator;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.CrossOrigin;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RestController;
++
++import static com.sini.doneit.model.MessageCode.*;
++
++@RestController
++@CrossOrigin("*")
++public class RegisterController {
++
++    @Autowired
++    LoginValidator loginValidator;
++
++    @Autowired
++    UserJpaRepository userJpaRepository;
++
++    @PostMapping(path = "/register-user")
++    public ResponseEntity<ResponseMessage> registerUser(@RequestBody User user) {
++        ResponseMessage responseMessage = null;
++        if (loginValidator.validateLogin(user)) {
++            userJpaRepository.save(user);
++            responseMessage = new ResponseMessage("Utente creato con successo", SUCCESSFUL_REGISTER);
++            return new ResponseEntity<>(responseMessage, HttpStatus.OK);
++        }
++        responseMessage = new ResponseMessage("Errore nella creazione dell'utente", INVALID_DATA);
++        return new ResponseEntity<>(responseMessage, HttpStatus.BAD_REQUEST);
++    }
++}
+Index: doneit/src/main/java/com/sini/doneit/model/MessageCode.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/java/com/sini/doneit/model/MessageCode.java	(date 1578007196265)
++++ doneit/src/main/java/com/sini/doneit/model/MessageCode.java	(date 1578007196265)
+@@ -0,0 +1,9 @@
++package com.sini.doneit.model;
++
++public class MessageCode {
++
++    public static final int INVALID_CREDENTIAL = 1;
++    public static final int INVALID_DATA = 2;
++    public static final int SUCCESSFUL_LOGIN = 3;
++    public static final int SUCCESSFUL_REGISTER = 4;
++}
+Index: doneit/src/main/java/com/sini/doneit/DoneitApplication.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/java/com/sini/doneit/DoneitApplication.java	(revision b0cd47317d2061242358ffd094ed3abffc381301)
++++ doneit/src/main/java/com/sini/doneit/DoneitApplication.java	(date 1578001361468)
+@@ -4,7 +4,7 @@
+ import org.springframework.boot.autoconfigure.SpringBootApplication;
+ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+ 
+-@SpringBootApplication(exclude={DataSourceAutoConfiguration.class})
++@SpringBootApplication
+ public class DoneitApplication {
+ 
+ 	public static void main(String[] args) {
+Index: doneit/src/main/java/com/sini/doneit/services/LoginValidator.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/java/com/sini/doneit/services/LoginValidator.java	(date 1578004164341)
++++ doneit/src/main/java/com/sini/doneit/services/LoginValidator.java	(date 1578004164341)
+@@ -0,0 +1,21 @@
++package com.sini.doneit.services;
++
++
++import com.sini.doneit.model.User;
++import org.springframework.stereotype.Service;
++
++@Service
++public class LoginValidator {
++
++    public boolean validateLogin(User user){
++        return validateUsername(user.getUsername()) && validatePassword(user.getPassword());
++    }
++
++    private boolean validateUsername(String username){
++        return username.length() > 4 && username.length() < 16;
++    }
++
++    private boolean validatePassword(String password){
++        return password.length() > 8 && password.length() < 30;
++    }
++}
+Index: doneit/src/main/resources/application.properties
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/resources/application.properties	(revision b0cd47317d2061242358ffd094ed3abffc381301)
++++ doneit/src/main/resources/application.properties	(date 1578003043240)
+@@ -1,1 +1,13 @@
++# Database Properties
++spring.h2.console.enabled=true
++spring.jpa.show-sql=true
++spring.datasource.url=jdbc:postgresql://localhost:5432/doneIt
++spring.datasource.username=postgres
++spring.datasource.password=postgres
+ 
++# Hibernate Properties
++# The SQL dialect makes Hibernate generate better SQL for the chosen database
++spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQL92Dialect
++
++# Hibernate ddl auto (create, create-drop, validate, update)
++spring.jpa.hibernate.ddl-auto=update
+Index: doneit/src/main/java/com/sini/doneit/repository/UserJpaRepository.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/java/com/sini/doneit/repository/UserJpaRepository.java	(date 1578004855707)
++++ doneit/src/main/java/com/sini/doneit/repository/UserJpaRepository.java	(date 1578004855707)
+@@ -0,0 +1,9 @@
++package com.sini.doneit.repository;
++
++import com.sini.doneit.model.User;
++import org.springframework.data.jpa.repository.JpaRepository;
++
++public interface UserJpaRepository extends JpaRepository<User, Long> {
++
++    User findByUsernameAndPassword(String username, String password);
++}
+Index: doneit/src/main/java/com/sini/doneit/controller/LoginController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- doneit/src/main/java/com/sini/doneit/controller/LoginController.java	(revision b0cd47317d2061242358ffd094ed3abffc381301)
++++ doneit/src/main/java/com/sini/doneit/controller/LoginController.java	(date 1578007196273)
+@@ -1,20 +1,43 @@
+ package com.sini.doneit.controller;
+ 
+ 
++import com.sini.doneit.model.ResponseMessage;
+ import com.sini.doneit.model.User;
++import com.sini.doneit.repository.UserJpaRepository;
++import com.sini.doneit.services.LoginValidator;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.web.bind.annotation.*;
+-import org.springframework.web.servlet.function.EntityResponse;
++import static com.sini.doneit.model.MessageCode.*;
+ 
+ @RestController
+ @CrossOrigin(origins = "*")
+ public class LoginController {
+ 
++    @Autowired
++    LoginValidator loginValidator;
++
++    @Autowired
++    UserJpaRepository userRepository;
+ 
+     @PostMapping(path = "/authenticate-user")
+-    public ResponseEntity<Void> authenticateUser(@RequestBody User user){
+-        System.out.println(user);
+-        return ResponseEntity.ok().build();
+-    }
++    public ResponseEntity<ResponseMessage> authenticateUser(@RequestBody User user) {
++        User tmpUser = null;
++        ResponseMessage responseMessage = null;
++        if (loginValidator.validateLogin(user)) {
++            tmpUser = userRepository.findByUsernameAndPassword(user.getUsername(), user.getPassword());
++            if (tmpUser != null) {
++                responseMessage = new ResponseMessage("Login Effettuato con Successo", SUCCESSFUL_LOGIN);
++            }
++            else{
++                responseMessage = new ResponseMessage("Credenziali errate", INVALID_CREDENTIAL);
++            }
++            return new ResponseEntity<>(responseMessage, HttpStatus.OK);
+ 
++        } else {
++            responseMessage = new ResponseMessage("Dati corrotti", INVALID_DATA);
++            return new ResponseEntity<>(responseMessage, HttpStatus.BAD_REQUEST);
++        }
++    }
+ }
